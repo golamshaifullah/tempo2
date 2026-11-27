@@ -1713,7 +1713,7 @@ void doPlot(pulsar *psr,int npsr,char *gr,double unitFlag, char parFile[][MAX_FI
         giza_set_colour_index(1);
         if (giza_device_has_cursor() && graphics!=2)
         {
-            if (!gplkReadEvent(&mouseX,&mouseY,&key)) { giza_close_devices(); return; }
+            if (!gplkReadEvent(&mouseX,&mouseY,&key)) { gplkCloseDevices(); return; }
             if (key==0 || key=='R') syncSurface=true;
             if (gplkResponsiveFonts) {
                 const float nx=gplkLayout.plot.left+(mouseX-plotx1)/(plotx2-plotx1)*(gplkLayout.plot.right-gplkLayout.plot.left);
@@ -2155,7 +2155,7 @@ void doPlot(pulsar *psr,int npsr,char *gr,double unitFlag, char parFile[][MAX_FI
                 else if (key=='m') /* Measure */
                 {
                     float mouseX2,mouseY2;
-                    if (!gplkReadBand(GIZA_BAND_LINE,0,mouseX,mouseY,&mouseX2,&mouseY2,&key)) { giza_close_devices(); return; }
+                    if (!gplkReadBand(GIZA_BAND_LINE,0,mouseX,mouseY,&mouseX2,&mouseY2,&key)) { gplkCloseDevices(); return; }
                     printf("Measure x = %.3g days\t y = %.3g\t gradient = %.3g\n",mouseX2-mouseX,mouseY2-mouseY,(mouseY2-mouseY)/(mouseX2-mouseX));
                 }
                 else if (key=='M') /* Toggle removing mean */
@@ -2560,7 +2560,7 @@ void doPlot(pulsar *psr,int npsr,char *gr,double unitFlag, char parFile[][MAX_FI
                 }
                 else if (key==24) /* cntr-X -- set X-scale */
                 {      
-                    if (!gplkReadBand(GIZA_BAND_NONE,0,0,0,&mouseX,&mouseY,&key)) { giza_close_devices(); return; }
+                    if (!gplkReadBand(GIZA_BAND_NONE,0,0,0,&mouseX,&mouseY,&key)) { gplkCloseDevices(); return; }
                     setZoomX1 = 0; setZoomX2 = 0; setZoomY1 = 0; setZoomY2 =0;
                     if (key=='1') xplot=1; // Prefit residuals	     
                     if (key=='2') xplot=2; // Postfit residuals      
@@ -2579,7 +2579,7 @@ void doPlot(pulsar *psr,int npsr,char *gr,double unitFlag, char parFile[][MAX_FI
                 }
                 else if (key==25) /* cntr-Y -- set Y-scale */
                 {      
-                    if (!gplkReadBand(GIZA_BAND_NONE,0,0,0,&mouseX,&mouseY,&key)) { giza_close_devices(); return; }
+                    if (!gplkReadBand(GIZA_BAND_NONE,0,0,0,&mouseX,&mouseY,&key)) { gplkCloseDevices(); return; }
                     setZoomX1 = 0; setZoomX2 = 0; setZoomY1 = 0; setZoomY2 =0;
                     if (key=='1') yplot=1;  // Prefit residuals	     
                     if (key=='2') yplot=2;  // Postfit residuals          
@@ -2619,7 +2619,7 @@ void doPlot(pulsar *psr,int npsr,char *gr,double unitFlag, char parFile[][MAX_FI
                     setZoomY2 = 0;
                 }
                 else if (key=='g') {  /* Change graphics device */
-                    giza_close_devices();
+                    gplkCloseDevices();
                     if (!gplkOpenDevice("?", 1, 1)) return;
 
                     gplkSetAspect(aspect);
@@ -2633,7 +2633,7 @@ void doPlot(pulsar *psr,int npsr,char *gr,double unitFlag, char parFile[][MAX_FI
                             giza_label(xstr,ystr,psr[0].name);
                             gplkDrawPoints(count,x,y,16);
                             if (plotErr==1) gplkDrawErrorBars(count,x,yerr1,yerr2,1);
-                            giza_close_devices();
+                            gplkCloseDevices();
                             if (!gplkOpenDevice("/xw", 1, 1)) return;
                             giza_stop_prompting(); */
                 }
@@ -2644,7 +2644,7 @@ void doPlot(pulsar *psr,int npsr,char *gr,double unitFlag, char parFile[][MAX_FI
                     printf("Enter fontsize (e.g. 1) ");
                     scanf("%f",&fontSize);
                     getchar(); // Apparently gcc doesn't flush stdin with fflush(stdin)
-                    giza_close_devices();
+                    gplkCloseDevices();
                     if (!gplkOpenDevice("/xw", nx, ny)) return;
                     giza_stop_prompting();
                     graphics=-1;
@@ -2763,10 +2763,10 @@ void doPlot(pulsar *psr,int npsr,char *gr,double unitFlag, char parFile[][MAX_FI
                     printf("Use left button to select regions\n");
                     printf("Click right button to finish\n");
                     do {
-                        if (!gplkReadBand(GIZA_BAND_NONE,0,0,0,&mx1,&my1,&key2)) { giza_close_devices(); return; }
+                        if (!gplkReadBand(GIZA_BAND_NONE,0,0,0,&mx1,&my1,&key2)) { gplkCloseDevices(); return; }
                         if (key2!='X')
                         {
-                            if (!gplkReadBand(GIZA_BAND_VERTLINES,0,mx1,my1,&mx2,&my2,&key2)) { giza_close_devices(); return; }
+                            if (!gplkReadBand(GIZA_BAND_VERTLINES,0,mx1,my1,&mx2,&my2,&key2)) { gplkCloseDevices(); return; }
                             rx1[nregion] = (float)(mx1+centreEpoch);
                             rx2[nregion] = (float)(mx2+centreEpoch);
                             fx[0] = mx1;
@@ -2922,7 +2922,7 @@ void doPlot(pulsar *psr,int npsr,char *gr,double unitFlag, char parFile[][MAX_FI
                 }
                 else if (key=='z') /* Define zoom using mouse */
                 {
-                    if (!gplkReadBand(GIZA_BAND_RECTANGLE,0,mouseX,mouseY,&mouseX2,&mouseY2,&key)) { giza_close_devices(); return; }
+                    if (!gplkReadBand(GIZA_BAND_RECTANGLE,0,mouseX,mouseY,&mouseX2,&mouseY2,&key)) { gplkCloseDevices(); return; }
                     setZoomX1 = 1; setZoomX2 = 1; setZoomY1 = 1; setZoomY2 = 1;
                     zoom=1;
                     zoomX1 = TKretMin_f(mouseX,mouseX2);
@@ -2955,7 +2955,7 @@ void doPlot(pulsar *psr,int npsr,char *gr,double unitFlag, char parFile[][MAX_FI
                     else if (menu==2) 
                     {
                         menu=3;
-                        giza_close_devices();
+                        gplkCloseDevices();
                         if (!gplkOpenDevice("/xw", 1, 1)) return;
                         gplkSetAspect(aspect);
 		    
@@ -2970,7 +2970,7 @@ void doPlot(pulsar *psr,int npsr,char *gr,double unitFlag, char parFile[][MAX_FI
                 }
                 else if (key=='Z') //delete points in a region selected by mouse
                 {
-                    if (!gplkReadBand(GIZA_BAND_RECTANGLE,0,mouseX,mouseY,&mouseX2,&mouseY2,&key)) { giza_close_devices(); return; }
+                    if (!gplkReadBand(GIZA_BAND_RECTANGLE,0,mouseX,mouseY,&mouseX2,&mouseY2,&key)) { gplkCloseDevices(); return; }
                     delX1 = TKretMin_f(mouseX,mouseX2);
                     delX2 = TKretMax_f(mouseX,mouseX2);
                     delY1 = TKretMin_f(mouseY,mouseY2);
@@ -3000,7 +3000,7 @@ void doPlot(pulsar *psr,int npsr,char *gr,double unitFlag, char parFile[][MAX_FI
         if (graphics==1) graphics=2;
         else if (graphics==2)
         {
-            giza_close_devices();
+            gplkCloseDevices();
             if (!gplkOpenDevice("/xw", 1, 1)) return;
             gplkSetAspect(aspect);
 		    
@@ -3013,7 +3013,7 @@ void doPlot(pulsar *psr,int npsr,char *gr,double unitFlag, char parFile[][MAX_FI
         }
     } while (exitFlag==0);
 
-    giza_close_devices();
+    gplkCloseDevices();
     delete[] id;
 }
 
@@ -3800,8 +3800,8 @@ void checkMenu3(pulsar *psr,float mx,float my,int button,int fitFlag,int setZoom
     {
         float mouse_x1,mouse_x2,mouse_y1,mouse_y2;
         char key;
-        if (!gplkReadBand(GIZA_BAND_CROSSHAIR,0,0,0,&mouse_x1,&mouse_y1,&key)) { giza_close_devices(); return; }
-        if (!gplkReadBand(GIZA_BAND_LINE,0,mouse_x1,mouse_y1,&mouse_x2,&mouse_y2,&key)) { giza_close_devices(); return; }
+        if (!gplkReadBand(GIZA_BAND_CROSSHAIR,0,0,0,&mouse_x1,&mouse_y1,&key)) { gplkCloseDevices(); return; }
+        if (!gplkReadBand(GIZA_BAND_LINE,0,mouse_x1,mouse_y1,&mouse_x2,&mouse_y2,&key)) { gplkCloseDevices(); return; }
         printf("Measure x = %.3g days\t y = %.3g\t gradient = %.3g\n",mouse_x2-mouse_x1,mouse_y2-mouse_y1,(mouse_y2-mouse_y1)/(mouse_x2-mouse_x1));
     }
     else if (mouseX==3 && mouseY==0)
@@ -3817,7 +3817,7 @@ void checkMenu3(pulsar *psr,float mx,float my,int button,int fitFlag,int setZoom
     }
     else if (mouseX==1 && mouseY==1)
     {
-        giza_close_devices();
+        gplkCloseDevices();
         if (!gplkOpenDevice("/ps", 1, 1)) return;
         gplkSetAspect(aspect);
 		    
@@ -3938,7 +3938,7 @@ void drawMenu(pulsar *psr, float plotx1,float plotx2,float ploty1,float ploty2,i
 
         printf("Have %f %f %f %f %f %f %f\n",x1,x2,x3,x4,xscale,plotx1,plotx2);
         printf("Scales = %f %f\n",xscale2,yscale2);
-        if (!gplkReadBand(GIZA_BAND_NONE,0,0,0,&mx,&my,&key)) { giza_close_devices(); return; }
+        if (!gplkReadBand(GIZA_BAND_NONE,0,0,0,&mx,&my,&key)) { gplkCloseDevices(); return; }
         printf("Have %f %f\n",mx,my); */
     if (menu==1)
     {

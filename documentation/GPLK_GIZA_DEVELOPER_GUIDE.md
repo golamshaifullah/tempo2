@@ -13,14 +13,15 @@ Paths below are relative to the repository root.
 | --- | --- |
 | `plugin/gplk_plug.C` | Plugin entry point, argument/setup parsing, fitting, plot arrays, event loop and legacy commands. Start with `graphicalInterface`, `doPlot`, `setPlot`, `setLabel`, `drawMenu3_2` and `checkMenu3`. |
 | `plugin/gplk_giza.h` | Device setup, themes, palettes, residual/overlay drawing, viewport conversion and cursor input. |
+| `plugin/gplk_x11_resize.h` | Optional X11 resize observer, idle-input wakeups and per-device thread/connection cleanup. All Giza calls stay on the main thread. |
 | `plugin/gplk_ui.h` | Bottom jump buttons, right-hand color panel/dropdown, dynamic color-group cache and literal identifiers. |
 | `plugin/gplk_jumps.h` | Concise selector labels, fixed instrumental-correction convention, fit-policy enforcement and guarded toggling. |
 | `plugin/gplk_noise.h` | Read-only access to reconstructed noise signals, availability checks and uncertainties, all in seconds. |
 | `plugin/gplk_overlays.h` | Explicit overlay context, solar-angle geometry, current-unit Shapiro/noise overlays and noise-overlay cycling. |
 | `plugin/gplk_spectrum.h` | Spectrum sample/result types, numerical calculation (`gplkComputeSpectrum`) and device/UI integration (`gplkShowSpectrum`). |
 | `plugin/gplk_spectrum_native.h` | Native TEMPO2 WLS/Cholesky adapters, fit-span filtering, stable row/uncertainty/index ordering. |
-| `tests/testGplkGiza.C` | Headless renderer integration, noise units/availability, and spectral regression tests. |
-| `autoconf.boot/giza.m4` | Native API link probe and `GIZA_CFLAGS` / `GIZA_LIBS`. |
+| `tests/testGplkGiza.C` | Headless renderer integration, noise units/availability, spectral regression and opt-in X11 resize tests. |
+| `autoconf.boot/giza.m4` | Native API and optional X11/thread link probes; Giza and resize compiler/linker flags. |
 | `bootstrap`, `plugin/plugin_lists/giza.plugins`, `plugin/Makefile.am` | Generate and select the Giza plugin target independently of PGPLOT. |
 | `README.md` | User-facing build instructions, options and scientific interpretation. |
 
@@ -180,13 +181,21 @@ only the displayed label.
 current viewport/window; Giza's world-unit text-length conversion is incorrect
 in some builds and can place the rest of a literal identifier off-screen.
 
-`gplkReadEvent` is the idle main/spectrum input path. A motion callback opts into
-resize notifications on newer Giza X11 drivers. These drivers return synthetic
-`r`, so compare surface dimensions before/after input and return a redraw-only
-event (key zero) when size changed. Never let this event reach lowercase `r`'s
-reload/refit command. Shift+R explicitly redraws on older Giza drivers; tested
-Giza 1.5 lacks automatic notification. Synchronize old-driver surface geometry
-with `giza_change_page` on initial display/resize. File devices also need an
+`gplkReadEvent` is the idle main/spectrum input path. When configure detects
+X11 and POSIX threads, `gplk_x11_resize.h` observes `ConfigureNotify` on a separate
+X connection. A temporary process-unique title identifies only our own windows;
+the visible title is restored to `gplk`. Initialize Xlib threading before opening
+Giza. The observer never calls Giza or touches pulsar data. It coalesces resize
+events and wakes idle `giza_band` with reserved Ctrl+Space (key zero), including
+on Giza 1.5. Main-thread input acknowledges the new size and updates paper
+metadata before `giza_change_page` recreates the surface. Never synthesize `r`:
+it reloads/refits. Wrap device closes with `gplkCloseDevice(s)` so the observer
+is detached/stopped before windows close or the plugin unloads. Child spectrum
+closure must preserve the parent's observer.
+
+Other backends retain Giza's motion-callback notification when available:
+compare dimensions before/after input to translate driver-generated resize `r`
+into key zero. Shift+R remains an explicit redraw fallback. File devices need an
 initial synchronization before the first drawn frame: otherwise requested
 paper dimensions can differ from the actual surface and clip the jump row.
 Do not advance file pages again during ordinary frame redraws.
@@ -377,7 +386,11 @@ it when invoking the matching built `./tempo2`. Check the reported plugin path
 so tests do not accidentally load an older installed build.
 
 The tests exercise headless SVG output, coordinates, noise data access and
-the spectrum's independent numerical reference. They do not replace a desktop
+the spectrum's independent numerical reference. On an X11 desktop, also run
+`GPLK_TEST_X11_RESIZE=1 timeout 30s tests/testGplkGiza --gtest_filter='*x11Resize*'`.
+This resizes its own main/child windows without moving the pointer or sending
+input, and checks paper dimensions, plot bounds and observer cleanup/reopening.
+Automated checks do not replace a desktop
 check of mouse input, window resizing or controls. For rendering changes,
 inspect dark/light outputs with dense residuals, bins, selections and a model
 curve together. For scientific changes, add focused numerical tests.

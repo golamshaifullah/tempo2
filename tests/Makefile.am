@@ -13,8 +13,8 @@ if HAVE_GIZA
 check_PROGRAMS += testGplkGiza
 TESTS += testGplkGiza
 testGplkGiza_SOURCES = testGplkGiza.C
-testGplkGiza_CPPFLAGS = @GIZA_CFLAGS@
-testGplkGiza_LDADD = libgtest.la ../libtempo2.la @GIZA_LIBS@ @PTHREAD_LIBS@ @PTHREAD_CFLAGS@
+testGplkGiza_CPPFLAGS = @GIZA_CFLAGS@ @GPLK_RESIZE_CFLAGS@
+testGplkGiza_LDADD = libgtest.la ../libtempo2.la @GIZA_LIBS@ @GPLK_RESIZE_LIBS@ @PTHREAD_LIBS@ @PTHREAD_CFLAGS@
 endif
 
 gtest_src=gtest-1.7.0/src/gtest-death-test.cc gtest-1.7.0/src/gtest-filepath.cc gtest-1.7.0/src/gtest-internal-inl.h gtest-1.7.0/src/gtest-port.cc gtest-1.7.0/src/gtest-printers.cc gtest-1.7.0/src/gtest-test-part.cc gtest-1.7.0/src/gtest-typed-test.cc gtest-1.7.0/src/gtest.cc gtest-1.7.0/src/gtest_main.cc

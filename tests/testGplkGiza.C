@@ -1,17 +1,18 @@
 // Headless integration checks using the real native Giza library.
+// Parse gtest before Xlib's legacy None macro enters the translation unit.
+#include <gtest/gtest.h>
+#include <src/gtest_main.cc>
 #include "../plugin/gplk_giza.h"
 #include "../plugin/gplk_spectrum.h"
 #include "../plugin/gplk_overlays.h"
 #include "../plugin/gplk_ui.h"
 #include <memory>
-#include <gtest/gtest.h>
-#include <src/gtest_main.cc>
 
 static bool near(float a, float b) { return std::fabs(a - b) < 1e-4f; }
 
 #define CHECK(condition) do { if (!(condition)) { \
     std::fprintf(stderr, "testGplkGiza:%d: %s\n", __LINE__, #condition); \
-    giza_close_devices(); return 1; } } while (0)
+    gplkCloseDevices(); return 1; } } while (0)
 
 static int checkNativeGiza()
 {
@@ -63,7 +64,7 @@ static int checkNativeGiza()
     CHECK(buffering!=0); // point batches must not prematurely present a frame
     giza_error_bars_vert_float(3, x, lo, hi, 1);
     giza_end_buffer();
-    giza_close_devices();
+    gplkCloseDevices();
 
     FILE *svg = std::fopen("testGplkGiza.svg", "rb");
     CHECK(svg != NULL);
@@ -85,7 +86,7 @@ static int checkNativeGiza()
     char key = 'x';
     CHECK(!gplkReadBand(GIZA_BAND_NONE, 0, 0, 0, &cx, &cy, &key));
     CHECK(key == 'q' && cx == 7 && cy == 9);
-    giza_close_devices();
+    gplkCloseDevices();
     return 0;
 }
 
@@ -93,6 +94,79 @@ TEST(testGplkGiza, nativeRenderer)
 {
     EXPECT_EQ(checkNativeGiza(), 0);
 }
+
+#ifdef HAVE_GPLK_X11_RESIZE
+struct GplkTestResizeRequest {
+    Display *display; Window window; unsigned int width,height;
+};
+static void *resizeAfterInputStarts(void *arg)
+{
+    GplkTestResizeRequest &r=*static_cast<GplkTestResizeRequest *>(arg);
+    usleep(120000);
+    // Only change window geometry: no pointer motion, key or button events.
+    XResizeWindow(r.display,r.window,r.width,r.height); XSync(r.display,False);
+    return 0;
+}
+static int checkX11Resize()
+{
+    CHECK(gplkOpenDevice("/xw",1,1));
+    int parent; giza_get_device_id(&parent);
+    CHECK(GplkX11Resize::instance().windowFor(parent)!=0);
+    // Exercise both main and child devices, then the restored main device.
+    for (int device=0;device<3;++device) {
+        if (device==1) CHECK(gplkOpenDevice("/xw",1,1));
+        if (device==2) { gplkCloseDevice(); giza_select_device(parent); }
+        int id; giza_get_device_id(&id);
+        const Window window=GplkX11Resize::instance().windowFor(id);
+        CHECK(window!=0);
+        Display *control=XOpenDisplay(0); CHECK(control!=NULL);
+        giza_change_page();
+        for (int step=0;step<4;++step) {
+            // Finish any ConfigureNotify from opening/initial paper settings.
+            usleep(80000);
+            float w,h;
+            if (GplkX11Resize::instance().take(id,w,h)) {
+                giza_set_paper_size_float(GIZA_UNITS_PIXELS,w,h); giza_change_page();
+            }
+            giza_begin_buffer(); giza_draw_background();
+            giza_set_viewport_float(.1f,.9f,.1f,.9f);
+            giza_set_window_float(-10,30,-2,6);
+            giza_box("BCNST",0,0,"BCNST",0,0); giza_end_buffer();
+            float oldW,oldH; giza_get_paper_size_float(GIZA_UNITS_PIXELS,&oldW,&oldH);
+            Window root; int x,y; unsigned int width,height,border,depth;
+            CHECK(XGetGeometry(control,window,&root,&x,&y,&width,&height,&border,&depth));
+            const int dx=step<2 ? 180 : -180, dy=step%2 ? 100 : -100;
+            GplkTestResizeRequest request={control,window,width+dx,height+dy};
+            pthread_t thread; CHECK(pthread_create(&thread,0,resizeAfterInputStarts,&request)==0);
+            float px=0,py=0; char key='?';
+            const bool ok=gplkReadEvent(&px,&py,&key);
+            pthread_join(thread,0);
+            CHECK(ok && key==0); // resize is never the reload/refit 'r'
+            float x1,x2,y1,y2; giza_get_window_float(&x1,&x2,&y1,&y2);
+            CHECK(near(x1,-10) && near(x2,30) && near(y1,-2) && near(y2,6));
+            giza_change_page();
+            giza_get_paper_size_float(GIZA_UNITS_PIXELS,&w,&h);
+            CHECK(std::fabs(w-oldW-dx)<2 && std::fabs(h-oldH-dy)<2);
+            GplkLayout layout; layout.update(w,h,20);
+            CHECK(near(layout.width,w) && near(layout.height,h));
+        }
+        XCloseDisplay(control);
+    }
+    gplkCloseDevices();
+    CHECK(GplkX11Resize::instance().windowFor(parent)==0);
+    // Reopening after closing all devices must restart the observer cleanly.
+    CHECK(gplkOpenDevice("/xw",1,1));
+    int id; giza_get_device_id(&id);
+    CHECK(GplkX11Resize::instance().windowFor(id)!=0);
+    gplkCloseDevices();
+    return 0;
+}
+TEST(testGplkGiza, x11ResizeWithoutPointerMotion)
+{
+    // Desktop regression is opt-in; ordinary make check remains headless.
+    if (std::getenv("GPLK_TEST_X11_RESIZE")) EXPECT_EQ(checkX11Resize(),0);
+}
+#endif
 
 TEST(testGplkGiza, responsiveLayoutAndLargeFlagGroups)
 {

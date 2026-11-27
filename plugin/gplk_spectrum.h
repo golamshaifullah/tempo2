@@ -401,7 +401,7 @@ static bool gplkShowSpectrum(const pulsar &p,int mode,const char *device,bool ha
             zoom=false;
         }
     }
-    giza_close_device(); gplkResponsiveFonts=parentResponsiveFonts;
+    gplkCloseDevice(); gplkResponsiveFonts=parentResponsiveFonts;
     if (previous>0) giza_select_device(previous);
     return true;
 }

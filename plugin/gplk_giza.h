@@ -14,6 +14,10 @@
 #ifndef TEMPO2_GPLK_GIZA_H
 #define TEMPO2_GPLK_GIZA_H
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 extern "C" {
 #include <giza.h>
 }
@@ -25,6 +29,7 @@ extern "C" {
 #include <cstring>
 #include <string>
 #include <vector>
+#include "gplk_x11_resize.h"
 
 enum GplkTheme { GPLK_DARK, GPLK_LIGHT, GPLK_CLASSIC };
 enum GplkPalette { GPLK_OCEAN, GPLK_CONTRAST, GPLK_SUNSET };
@@ -301,10 +306,21 @@ static void gplkDrawFrequencyLegend(int n, const float *lo, const float *hi, con
  */
 static bool gplkOpenDevice(const char *device, int columns, int rows)
 {
-    if (giza_open_device(device, "gplk") <= 0) {
+    std::string title="gplk";
+#ifdef HAVE_GPLK_X11_RESIZE
+    title=GplkX11Resize::instance().openingTitle(device);
+#endif
+    if (giza_open_device(device, title.c_str()) <= 0) {
         std::fprintf(stderr, "gplk: cannot open Giza device '%s'\n", device);
         return false;
     }
+#ifdef HAVE_GPLK_X11_RESIZE
+    if (giza_device_has_cursor()) {
+        int id; float w,h; giza_get_device_id(&id);
+        giza_get_paper_size_float(GIZA_UNITS_PIXELS,&w,&h);
+        GplkX11Resize::instance().attach(id,title,w,h);
+    }
+#endif
     giza_set_colour_palette(GIZA_COLOUR_PALETTE_PGPLOT);
     char type[32] = {0};
     int length = sizeof(type);
@@ -321,6 +337,21 @@ static bool gplkOpenDevice(const char *device, int columns, int rows)
         giza_set_panel(1, 1);
     }
     return true;
+}
+
+static void gplkCloseDevices()
+{
+#ifdef HAVE_GPLK_X11_RESIZE
+    GplkX11Resize::instance().stop();
+#endif
+    giza_close_devices();
+}
+static void gplkCloseDevice()
+{
+#ifdef HAVE_GPLK_X11_RESIZE
+    int id; giza_get_device_id(&id); GplkX11Resize::instance().detach(id);
+#endif
+    giza_close_device();
 }
 
 /** Keep device width; set height/width when aspect>0, otherwise retain its size. */
@@ -560,12 +591,37 @@ static bool gplkReadBand(int mode, int move, float anchorX, float anchorY,
 
 static void gplkResizeMotion(double *,double *,int *) {}
 
-/** Main idle input only: newer Giza X11 drivers opt into resize notifications
- * through a motion callback and return synthetic 'r'. Never dispatch that as
- * gplk's destructive restart/refit command. Nested rubber-band input keeps its
- * ordinary semantics. Old drivers can use R to redraw at their new size. */
+/** Main idle input: X11 notifications wake even older blocking Giza drivers.
+ * Resize returns key=0 for a redraw, never the destructive restart/refit 'r'.
+ * Nested rubber-band input keeps its ordinary semantics. Other backends use
+ * Giza's notifications when available, or R for a manual redraw. */
 static bool gplkReadEvent(float *x,float *y,char *key)
 {
+#ifdef HAVE_GPLK_X11_RESIZE
+    int id; giza_get_device_id(&id);
+    GplkX11Resize &resize=GplkX11Resize::instance();
+    if (resize.windowFor(id)) {
+        // The observer never calls Giza. Synchronize old drivers' paper metadata
+        // here, on the main thread, before the next frame changes the page.
+        while (true) {
+            float width=0,height=0;
+            if (resize.take(id,width,height)) {
+                giza_set_paper_size_float(GIZA_UNITS_PIXELS,width,height);
+                *key=0; return true;
+            }
+            resize.waiting(id,true);
+            const bool ok=gplkReadBand(GIZA_BAND_NONE,0,0,0,x,y,key);
+            resize.waiting(id,false);
+            if (!ok) return false;
+            if (resize.take(id,width,height)) {
+                giza_set_paper_size_float(GIZA_UNITS_PIXELS,width,height);
+                if (*key!='q') *key=0;
+                return true;
+            }
+            if (*key!=0) return true; // discard a redundant, queued wakeup
+        }
+    }
+#endif
     float beforeW,beforeH,afterW,afterH;
     giza_get_paper_size_float(GIZA_UNITS_PIXELS,&beforeW,&beforeH);
     giza_set_motion_callback(gplkResizeMotion);

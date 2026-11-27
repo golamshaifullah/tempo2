@@ -23,7 +23,7 @@ plugin_LTLIBRARIES=
 include build_settings/vanilla.am
 
 # Native Giza gplk is independent of the PGPLOT plugins below.
-EXTRA_DIST = gplk_giza.h gplk_noise.h gplk_spectrum.h gplk_spectrum_native.h gplk_overlays.h gplk_ui.h gplk_jumps.h plugin_lists/giza.plugins
+EXTRA_DIST = gplk_giza.h gplk_x11_resize.h gplk_noise.h gplk_spectrum.h gplk_spectrum_native.h gplk_overlays.h gplk_ui.h gplk_jumps.h plugin_lists/giza.plugins
 if HAVE_GIZA
 include build_settings/giza.am
 gplksetupdir = @TEMPO2_PLUG_INSTALL@/../plugin_data

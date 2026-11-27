@@ -163,11 +163,13 @@ Changing legend pages does not move jump buttons. Observations missing that
 flag get a separate `(missing)` group. Long labels are abbreviated visually;
 their stored identifiers remain unchanged. `Ctrl+I` retains terminal selection.
 
-Automatic resize redraw requires a Giza X11 driver that sends resize
-notifications through the motion-callback API. Older drivers, including the
-tested Giza 1.5 build, can use **Shift+R** after resizing. Lowercase `r` keeps
-its existing reload/refit meaning. Resize redraws preserve the fit, zoom and
-overlays; the separate spectrum window supports the same redraw handling.
+Dragging an X11 window's corner automatically redraws its contents at the new
+size, including with Giza 1.5. Configure detects the optional X11 development
+headers/library and POSIX threads needed for this support. No mouse movement
+back into the plot or key press is needed. Resize redraws preserve the fit,
+zoom and overlays; the separate spectrum window behaves the same way.
+**Shift+R** remains a manual redraw option on other backends or builds without
+X11 resize support. Lowercase `r` keeps its existing reload/refit meaning.
 
 Drawing uses native Giza frame buffering and one point batch per selected
 color group, with reusable storage. Flag coloring replaces frequency coloring
